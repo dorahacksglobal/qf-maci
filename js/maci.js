@@ -33,11 +33,12 @@ class MACI {
     this.pubKeyHasher = poseidon(this.coordinator.pubKey)
 
     const emptyVOTree = new Tree(5, voteOptionTreeDepth, 0n)
-    const blankStateHash = poseidon([0, 0, 0, emptyVOTree.root, 0])
+    const blankStateHash = poseidon([0, 0, 0, 0, 0])
 
     const stateTree = new Tree(5, stateTreeDepth, blankStateHash)
 
     console.log([
+      '',
       'init MACI '.padEnd(40, '='),
       '- vo tree root:\t\t' + emptyVOTree.root,
       '- state tree root:\t' + stateTree.root,
@@ -51,6 +52,7 @@ class MACI {
     this.commands = []
     this.messages = []
     this.states = MACI_STATES.FILLING
+    this.logs = []
   }
 
   emptyMessage() {
@@ -68,6 +70,7 @@ class MACI {
       balance: 0n,
       voTree: new Tree(5, this.voteOptionTreeDepth, 0n),
       nonce: 0n,
+      voted: false,
     }
   }
 
@@ -82,15 +85,24 @@ class MACI {
 
     this.stateLeaves.set(leafIdx, s)
 
-    const hash = poseidon([...s.pubKey, s.balance, s.voTree.root, s.nonce])
+    const hash = poseidon([
+      ...s.pubKey,
+      s.balance,
+      s.voted ? s.voTree.root : 0n,
+      s.nonce
+    ])
     this.stateTree.updateLeaf(leafIdx, hash)
 
     console.log([
       `set State { idx: ${leafIdx} } `.padEnd(40, '='),
-      '- old tree root:\t' + stateTreeRoot,
+      '- leaf hash:\t\t' + hash,
       '- new tree root:\t' + this.stateTree.root,
       '',
     ].join('\n'))
+    this.logs.push({
+      type: 'setStateLeaf',
+      data: stringizing(arguments)
+    })
   }
 
   pushMessage(ciphertext, encPubKey) {
@@ -145,6 +157,10 @@ class MACI {
       '- new msg hash:\t' + hash,
       '',
     ].join('\n'))
+    this.logs.push({
+      type: 'publishMessage',
+      data: stringizing(arguments)
+    })
   }
 
   endVotePeriod() {
@@ -225,7 +241,12 @@ class MACI {
 
       const s = this.stateLeaves.get(stateIdx) || this.emptyState()
       const currVotes = s.voTree.leaf(voIdx)
-      currentStateLeaves[i] = [...s.pubKey, s.balance, s.voTree.root, s.nonce]
+      currentStateLeaves[i] = [
+        ...s.pubKey,
+        s.balance,
+        s.voted ? s.voTree.root : 0n,
+        s.nonce
+      ]
       currentStateLeavesPathElements[i] = this.stateTree.pathElementOf(stateIdx)
       currentVoteWeights[i] = currVotes
       currentVoteWeightsPathElements[i] = s.voTree.pathElementOf(voIdx)
@@ -236,6 +257,7 @@ class MACI {
         s.balance = s.balance + currVotes * currVotes - cmd.newVotes * cmd.newVotes
         s.voTree.updateLeaf(voIdx, cmd.newVotes)
         s.nonce = cmd.nonce
+        s.voted = true
 
         this.stateLeaves.set(stateIdx, s)
 

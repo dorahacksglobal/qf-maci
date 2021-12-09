@@ -6,6 +6,7 @@ include "./messageToCommand.circom";
 include "./privToPubKey.circom";
 include "./stateLeafTransformer.circom";
 include "./trees/incrementalQuinTree.circom";
+include "./trees/zeroRoot.circom";
 include "../node_modules/circomlib/circuits/mux1.circom";
 
 /*
@@ -95,8 +96,10 @@ template ProcessMessages(
     signal input currentVoteWeights[batchSize];
     signal input currentVoteWeightsPathElements[batchSize][voteOptionTreeDepth][TREE_ARITY - 1];
 
-    // // hash2([ hash5([0,0,0,0,0]) , hash5([0,0,0,0,0]) ])
-    // var msgZeroHash = 17275449213996161510934492606295966958609980169974699290756906233261208992839;
+    // vote option tree zero root
+    component calculateVOTreeZeroRoot = ZeroRoot(voteOptionTreeDepth);
+    signal voTreeZeroRoot;
+    voTreeZeroRoot <== calculateVOTreeZeroRoot.out;
 
     // Verify currentStateCommitment
     component currentStateCommitmentHasher = HashLeftRight(); 
@@ -213,6 +216,8 @@ template ProcessMessages(
 
         processors[i].currentStateRoot <== stateRoots[i + 1];
 
+        processors[i].voTreeZeroRoot <== voTreeZeroRoot;
+
         for (var j = 0; j < STATE_LEAF_LENGTH; j ++) {
             processors[i].stateLeaf[j] <== currentStateLeaves[i][j];
         }
@@ -283,10 +288,9 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
     signal input numSignUps;
     signal input maxVoteOptions;
 
-    // signal input pollEndTimestamp;
-
     signal input currentStateRoot;
-    // signal input currentBallotRoot;
+
+    signal input voTreeZeroRoot;
 
     signal input stateLeaf[STATE_LEAF_LENGTH];
     signal input stateLeafPathElements[stateTreeDepth][TREE_ARITY - 1];
@@ -378,7 +382,13 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
         }
     }
 
-    currentVoteWeightQip.root === stateLeaf[STATE_LEAF_VO_ROOT_IDX];
+    component slvoRootIsZero = IsZero();
+    slvoRootIsZero.in <== stateLeaf[STATE_LEAF_VO_ROOT_IDX];
+    component voRootMux = Mux1();
+    voRootMux.s <== slvoRootIsZero.out;
+    voRootMux.c[0] <== stateLeaf[STATE_LEAF_VO_ROOT_IDX];
+    voRootMux.c[1] <== voTreeZeroRoot;
+    currentVoteWeightQip.root === voRootMux.out;
 
     component voteWeightMux = Mux1();
     voteWeightMux.s <== transformer.isValid;
