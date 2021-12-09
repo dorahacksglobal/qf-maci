@@ -1,0 +1,18 @@
+{
+  "name": "zk-learning",
+  "version": "1.0.0",
+  "description": "learning",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Felix Cai",
+  "license": "ISC",
+  "dependencies": {
+    "blake-hash": "^2.0.0",
+    "circom": "git://github.com/weijiekoh/circomlib.git#243d2ec4fc9855780632fc498d24415b5534019f",
+    "circomlib": "^2.0.0",
+    "ethers": "^5.5.2",
+    "ffjavascript": "^0.2.46"
+  }
+}
