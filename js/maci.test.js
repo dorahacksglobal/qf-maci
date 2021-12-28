@@ -29,7 +29,7 @@ const main = new MACI(
   4, 2, 4,               // tree config
   privateKeys[0],         // coordinator
   20,
-  5
+  2
 )
 
 main.initStateTree(USER_1, user1.pubKey, 100)
@@ -69,3 +69,4 @@ fs.writeFileSync(
   path.join(outputPath, 'logs.json'),
   JSON.stringify(main.logs, undefined, 2)
 )
+console.log(main.logs.map(log => log.input).join('\n'))

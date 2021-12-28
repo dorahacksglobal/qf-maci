@@ -76,8 +76,6 @@ class MACI {
 
   initStateTree(leafIdx, pubKey, balance) {
     if (this.states !== MACI_STATES.FILLING) throw new Error('vote period ended')
-
-    const stateTreeRoot = this.stateTree.root
   
     const s = this.stateLeaves.get(leafIdx) || this.emptyState()
     s.pubKey = [...pubKey]
@@ -101,7 +99,8 @@ class MACI {
     ].join('\n'))
     this.logs.push({
       type: 'setStateLeaf',
-      data: stringizing(arguments)
+      data: stringizing(arguments),
+      input: stringizing([pubKey, balance]).map(input => JSON.stringify(input)).join(','),
     })
   }
 
@@ -159,7 +158,8 @@ class MACI {
     ].join('\n'))
     this.logs.push({
       type: 'publishMessage',
-      data: stringizing(arguments)
+      data: stringizing(arguments),
+      input: stringizing([[ciphertext], encPubKey]).map(input => JSON.stringify(input)).join(','),
     })
   }
 

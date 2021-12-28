@@ -129,12 +129,12 @@ abstract contract SimpleQuinaryTree {
         leavesCount++;
     }
 
-    function update(uint256 _index, uint256 _leaf) public onlyMACI {
-        require(_index - _leafIdx0 < leavesCount, "must update from a leaf");
+    // function update(uint256 _index, uint256 _leaf) public onlyMACI {
+    //     require(_index - _leafIdx0 < leavesCount, "must update from a leaf");
 
-        nodes[_index] = _leaf;
-        _updateAt(_index);
-    }
+    //     nodes[_index] = _leaf;
+    //     _updateAt(_index);
+    // }
 
     function _updateAt(uint256 _index) private {
         require(_index >= _leafIdx0, "must update from height 0");
