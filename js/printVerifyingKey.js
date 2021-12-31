@@ -21,13 +21,13 @@ try {
   output.push(data.vk_alpha_1.slice(0, 2))
 
   // beta2
-  output.push(data.vk_beta_2.slice(0, 2))
+  output.push(data.vk_beta_2.slice(0, 2).map(a => a.reverse()))
 
   // gamma2
-  output.push(data.vk_gamma_2.slice(0, 2))
+  output.push(data.vk_gamma_2.slice(0, 2).map(a => a.reverse()))
 
   // delta2
-  output.push(data.vk_delta_2.slice(0, 2))
+  output.push(data.vk_delta_2.slice(0, 2).map(a => a.reverse()))
 
   // ic
   output.push(data.IC.map(point => point.slice(0, 2)))

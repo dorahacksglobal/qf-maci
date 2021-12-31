@@ -19,8 +19,8 @@ try {
 
   output.push(...data.pi_a.slice(0, 2))
 
-  output.push(...data.pi_b[0])
-  output.push(...data.pi_b[1])
+  output.push(...data.pi_b[0].reverse())
+  output.push(...data.pi_b[1].reverse())
 
   output.push(...data.pi_c.slice(0, 2))
 
