@@ -26,7 +26,7 @@ const user1 = genKeypair(privateKeys[1])
 const user2 = genKeypair(privateKeys[4])
 
 const main = new MACI(
-  4, 2, 4,               // tree config
+  4, 2, 2, 4,               // tree config
   privateKeys[0],         // coordinator
   20,
   2
@@ -55,18 +55,31 @@ main.pushMessage(message2, enc2.pubKey)
 
 main.endVotePeriod()
 
-while (main.msgEndIdx > 0) {
-  let i = 0
+// PROCESSING
+let i = 0
+while (main.states === 1) {
   const input = main.processMessage(1234567890n)
 
   fs.writeFileSync(
-    path.join(outputPath, `input_${i.toString().padStart(4, '0')}.json`),
+    path.join(outputPath, `msg-input_${i.toString().padStart(4, '0')}.json`),
     JSON.stringify(stringizing(input), undefined, 2)
   )
+  i++
+}
+
+// TALLYING
+i = 0
+while (main.states === 2) {
+  const input = main.processTally([123n, 456n, 789n])
+
+  fs.writeFileSync(
+    path.join(outputPath, `tally-input_${i.toString().padStart(4, '0')}.json`),
+    JSON.stringify(stringizing(input), undefined, 2)
+  )
+  i++
 }
 
 fs.writeFileSync(
   path.join(outputPath, 'logs.json'),
   JSON.stringify(main.logs, undefined, 2)
 )
-console.log(main.logs.map(log => log.input).join('\n'))

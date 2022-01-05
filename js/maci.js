@@ -17,6 +17,7 @@ const MACI_STATES = {
 class MACI {
   constructor(
     stateTreeDepth,
+    intStateTreeDepth,
     voteOptionTreeDepth,
     batchSize,
     coordPriKey,
@@ -24,9 +25,11 @@ class MACI {
     numSignUps,
   ) {
     this.stateTreeDepth = stateTreeDepth
+    this.intStateTreeDepth = intStateTreeDepth
     this.voteOptionTreeDepth = voteOptionTreeDepth
     this.batchSize = batchSize
     this.maxVoteOptions = maxVoteOptions
+    this.voSize = 5 ** voteOptionTreeDepth
     this.numSignUps = numSignUps
 
     this.coordinator = genKeypair(coordPriKey)
@@ -211,7 +214,7 @@ class MACI {
     const batchStartIdx = Math.floor((this.msgEndIdx - 1) / batchSize) * batchSize
     const batchEndIdx = Math.min(batchStartIdx + batchSize, this.msgEndIdx)
   
-    console.log(`Process message [${batchStartIdx}, ${batchEndIdx})`.padEnd(40, '='))
+    console.log(`= Process message [${batchStartIdx}, ${batchEndIdx}) `.padEnd(40, '='))
 
     const messages = this.messages.slice(batchStartIdx, batchEndIdx)
     const commands = this.commands.slice(batchStartIdx, batchEndIdx)
@@ -323,9 +326,132 @@ class MACI {
     ].join('\n'))
 
     if (batchStartIdx === 0) {
-      this.states = MACI_STATES.TALLYING
+      this.endProcessingPeriod()
+    }
+
+    return input
+  }
+
+  endProcessingPeriod() {
+    if (this.states !== MACI_STATES.PROCESSING) throw new Error('vote period ended')
+    this.states = MACI_STATES.TALLYING
+
+    this.batchNum = 0
+    // resultsRootSalt, perVOVotesRootSalt, perVOSpentVoiceCreditsRootSalt
+    this.tallySalts = [0n, 0n, 0n]
+    this.tallyCommitment = 0n
+
+    this.tallyResults = new Tree(5, this.voteOptionTreeDepth, 0n)
+    this.tallyVotes = new Tree(5, this.voteOptionTreeDepth, 0n)
+    this.tallySpentVCs = new Tree(5, this.voteOptionTreeDepth, 0n)
+
+    console.log([
+      'Process Finished '.padEnd(60, '='),
+      '',
+    ].join('\n'))
+  }
+
+  processTally(tallySalts = [0n, 0n, 0n]) {
+    if (this.states !== MACI_STATES.TALLYING) throw new Error('period error')
+
+    const batchSize = 5 ** this.intStateTreeDepth
+    const batchStartIdx = this.batchNum * batchSize
+    const batchEndIdx = batchStartIdx + batchSize
+  
+    console.log(`= Process tally [${batchStartIdx}, ${batchEndIdx}) `.padEnd(40, '='))
+
+    const statePathElements = this.stateTree.pathElementOf(batchStartIdx).slice(this.intStateTreeDepth)
+
+    // PROCESS ================================================================
+
+    const currentResults = this.tallyResults.leaves()
+    const currentPerVOVotes = this.tallyVotes.leaves()
+    const currentPerVOSpentVoiceCredits = this.tallySpentVCs.leaves()
+
+    const stateLeaf = new Array(batchSize)
+    const votes = new Array(batchSize)
+
+    for (let i = 0; i < batchSize; i++) {
+      const stateIdx = batchStartIdx + i
+
+      const s = this.stateLeaves.get(stateIdx) || this.emptyState()
+
+      stateLeaf[i] = [
+        ...s.pubKey,
+        s.balance,
+        s.voted ? s.voTree.root : 0n,
+        s.nonce
+      ]
+      votes[i] = s.voTree.leaves()
+
+      if (!s.voted) continue
+
+      for (let j = 0; j < this.voSize; j++) {
+        const v = s.voTree.leaf(j)
+
+        this.tallyResults.updateLeaf(j, this.tallyResults.leaf(j) + this.tallyVotes.leaf(j) * v)
+        this.tallyVotes.updateLeaf(j, this.tallyVotes.leaf(j) + v)
+        this.tallySpentVCs.updateLeaf(j, this.tallySpentVCs.leaf(j) + v * v)
+      }
+    }
+
+    const newTallyCommitment = poseidon([
+      poseidon([this.tallyResults.root, tallySalts[0]]),
+      poseidon([this.tallyVotes.root, tallySalts[1]]),
+      poseidon([this.tallySpentVCs.root, tallySalts[2]]),
+    ])
+
+    // GEN INPUT JSON =========================================================
+    const packedVals =
+      BigInt(this.batchNum) +
+      (BigInt(this.numSignUps) << 32n)
+
+    const inputHash = BigInt(utils.soliditySha256(
+      new Array(4).fill('uint256'),
+      stringizing([
+        packedVals,
+        this.stateCommitment,
+        this.tallyCommitment,
+        newTallyCommitment,
+      ])
+    )) % SNARK_FIELD_SIZE
+
+    const input = {
+      stateRoot: this.stateTree.root,
+      stateSalt: this.stateSalt,
+      packedVals,
+      stateCommitment: this.stateCommitment,
+      currentTallyCommitment: this.tallyCommitment,
+      newTallyCommitment,
+      inputHash,
+      stateLeaf,
+      statePathElements,
+      votes,
+      currentResults,
+      currentResultsRootSalt: this.tallySalts[0],
+      newResultsRootSalt: tallySalts[0],
+      currentPerVOVotes,
+      currentPerVOVotesRootSalt: this.tallySalts[1],
+      newPerVOVotesRootSalt: tallySalts[1],
+      currentPerVOSpentVoiceCredits,
+      currentPerVOSpentVoiceCreditsRootSalt: this.tallySalts[2],
+      newPerVOSpentVoiceCreditsRootSalt: tallySalts[2],
+    }
+
+    this.batchNum++
+    this.tallyCommitment = newTallyCommitment
+    this.tallySalts = tallySalts
+
+    console.log([
+      '',
+      '* new tally commitment:\n\n' + newTallyCommitment,
+      '',
+    ].join('\n'))
+
+    if (batchEndIdx >= this.numSignUps) {
+      this.states = MACI_STATES.ENDED
       console.log([
-        'Process Finished '.padEnd(60, '='),
+        'Tally Finished '.padEnd(60, '='),
         '',
       ].join('\n'))
     }

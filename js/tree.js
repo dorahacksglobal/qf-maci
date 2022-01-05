@@ -53,6 +53,10 @@ class Tree {
     return this.nodes[nodeIdx]
   }
 
+  leaves() {
+    return this.nodes.slice(this.LEAVES_IDX_0)
+  }
+
   updateLeaf(leafIdx, leaf) {
     if (leafIdx > this.LEAVES_COUNT || leafIdx < 0) {
       throw new Error('wrong leaf index')
