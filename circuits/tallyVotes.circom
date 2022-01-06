@@ -43,9 +43,9 @@ template TallyVotes(
     signal input newTallyCommitment;
     
     // A tally commitment is the hash of the following salted values:
-    //   - the vote results
-    //   - the number of voice credits spent per vote option
-    //   - the total number of spent voice credits
+    //   - the packed vote results:
+    //      + the number of voice credits spent per vote option
+    //      + the number of votes per vote option
 
     signal input inputHash;
 
@@ -58,14 +58,6 @@ template TallyVotes(
     signal input currentResults[numVoteOptions];
     signal input currentResultsRootSalt;
     signal input newResultsRootSalt;
-
-    signal input currentPerVOVotes[numVoteOptions];
-    signal input currentPerVOVotesRootSalt;
-    signal input newPerVOVotesRootSalt;
-
-    signal input currentPerVOSpentVoiceCredits[numVoteOptions];
-    signal input currentPerVOSpentVoiceCreditsRootSalt;
-    signal input newPerVOSpentVoiceCreditsRootSalt;
 
     //  ----------------------------------------------------------------------- 
     // Verify stateCommitment
@@ -105,11 +97,9 @@ template TallyVotes(
     component stateLeafHasher[batchSize];
     for (var i = 0; i < batchSize; i ++) {
         stateLeafHasher[i] = Hasher5();
-
         for (var j = 0; j < STATE_LEAF_LENGTH; j ++) {
             stateLeafHasher[i].in[j] <== stateLeaf[i][j];
         }
-
         stateSubroot.leaves[i] <== stateLeafHasher[i].hash;
     }
 
@@ -159,24 +149,13 @@ template TallyVotes(
 
     //  ----------------------------------------------------------------------- 
     // Tally the new results
-    // Tally the spent voice credits per vote option
-    component resultCalc[numVoteOptions];
+    var MAX_VOTES = 10 ** 24;
+    component newResults[numVoteOptions];
     for (var i = 0; i < numVoteOptions; i ++) {
-        resultCalc[i] = CalculateArea(batchSize);
-        resultCalc[i].currentVotes <== currentPerVOVotes[i] * iz.out;
-        resultCalc[i].currentArea <== currentResults[i] * iz.out;
+        newResults[i] = CalculateTotal(batchSize + 1);
+        newResults[i].nums[batchSize] <== currentResults[i] * iz.out;
         for (var j = 0; j < batchSize; j ++) {
-            resultCalc[i].v[j] <== votes[j][i];
-        }
-    }
-
-    // Tally the spent voice credits per vote option
-    component newPerVOSpentVoiceCredits[numVoteOptions];
-    for (var i = 0; i < numVoteOptions; i ++) {
-        newPerVOSpentVoiceCredits[i] = CalculateTotal(batchSize + 1);
-        newPerVOSpentVoiceCredits[i].nums[batchSize] <== currentPerVOSpentVoiceCredits[i] * iz.out;
-        for (var j = 0; j < batchSize; j ++) {
-            newPerVOSpentVoiceCredits[i].nums[j] <== votes[j][i] * votes[j][i];
+            newResults[i].nums[j] <== votes[j][i] * (votes[j][i] + MAX_VOTES);
         }
     }
 
@@ -189,19 +168,9 @@ template TallyVotes(
     rcv.currentResultsRootSalt <== currentResultsRootSalt;
     rcv.newResultsRootSalt <== newResultsRootSalt;
 
-    rcv.currentPerVOVotesRootSalt <== currentPerVOVotesRootSalt;
-    rcv.newPerVOVotesRootSalt <== newPerVOVotesRootSalt;
-
-    rcv.currentPerVOSpentVoiceCreditsRootSalt <== currentPerVOSpentVoiceCreditsRootSalt;
-    rcv.newPerVOSpentVoiceCreditsRootSalt <== newPerVOSpentVoiceCreditsRootSalt;
-
     for (var i = 0; i < numVoteOptions; i ++) {
         rcv.currentResults[i] <== currentResults[i];
-        rcv.newResults[i] <== resultCalc[i].area;
-        rcv.currentPerVOVotes[i] <== currentPerVOVotes[i];
-        rcv.newPerVOVotes[i] <== resultCalc[i].votes;
-        rcv.currentPerVOSpentVoiceCredits[i] <== currentPerVOSpentVoiceCredits[i];
-        rcv.newPerVOSpentVoiceCredits[i] <== newPerVOSpentVoiceCredits[i].sum;
+        rcv.newResults[i] <== newResults[i].sum;
     }
 }
 
@@ -250,52 +219,17 @@ template ResultCommitmentVerifier(voteOptionTreeDepth) {
     signal input newResults[numVoteOptions];
     signal input newResultsRootSalt;
 
-    // Votes per vote option
-    signal input currentPerVOVotes[numVoteOptions];
-    signal input currentPerVOVotesRootSalt;
-
-    signal input newPerVOVotes[numVoteOptions];
-    signal input newPerVOVotesRootSalt;
-
-    // Spent voice credits per vote option
-    signal input currentPerVOSpentVoiceCredits[numVoteOptions];
-    signal input currentPerVOSpentVoiceCreditsRootSalt;
-
-    signal input newPerVOSpentVoiceCredits[numVoteOptions];
-    signal input newPerVOSpentVoiceCreditsRootSalt;
-
     // Compute the commitment to the current results
     component currentResultsRoot = QuinCheckRoot(voteOptionTreeDepth);
 
-    component currentPerVOVotesRoot = QuinCheckRoot(voteOptionTreeDepth);
-    // Compute the root of the spent voice credits per vote option
-    component currentPerVOSpentVoiceCreditsRoot = QuinCheckRoot(voteOptionTreeDepth);
-
     for (var i = 0; i < numVoteOptions; i ++) {
         currentResultsRoot.leaves[i] <== currentResults[i];
-        currentPerVOVotesRoot.leaves[i] <== currentPerVOVotes[i];
-        currentPerVOSpentVoiceCreditsRoot.leaves[i] <== currentPerVOSpentVoiceCredits[i];
     }
 
-    component currentResultsCommitment = HashLeftRight();
-    currentResultsCommitment.left <== currentResultsRoot.root;
-    currentResultsCommitment.right <== currentResultsRootSalt;
+    component currentTallyCommitmentHasher = HashLeftRight();
+    currentTallyCommitmentHasher.left <== currentResultsRoot.root;
+    currentTallyCommitmentHasher.right <== currentResultsRootSalt;
 
-    component currentPerVOVotesCommitment = HashLeftRight();
-    currentPerVOVotesCommitment.left <== currentPerVOVotesRoot.root;
-    currentPerVOVotesCommitment.right <== currentPerVOVotesRootSalt;
-
-    component currentPerVOSpentVoiceCreditsCommitment = HashLeftRight();
-    currentPerVOSpentVoiceCreditsCommitment.left <== currentPerVOSpentVoiceCreditsRoot.root;
-    currentPerVOSpentVoiceCreditsCommitment.right <== currentPerVOSpentVoiceCreditsRootSalt;
-
-    // Commit to the current tally
-    component currentTallyCommitmentHasher = Hasher3();
-    currentTallyCommitmentHasher.in[0] <== currentResultsCommitment.hash;
-    currentTallyCommitmentHasher.in[1] <== currentPerVOVotesCommitment.hash;
-    currentTallyCommitmentHasher.in[2] <== currentPerVOSpentVoiceCreditsCommitment.hash;
-
-    /*currentTallyCommitmentHasher.hash === currentTallyCommitment;*/
      // Check if the current tally commitment is correct only if this is not the first batch
      component iz = IsZero();
      iz.in <== isFirstBatch;
@@ -315,37 +249,14 @@ template ResultCommitmentVerifier(voteOptionTreeDepth) {
     // Compute the root of the new results
     component newResultsRoot = QuinCheckRoot(voteOptionTreeDepth);
 
-    component newPerVOVotesRoot = QuinCheckRoot(voteOptionTreeDepth);
-    // Compute the root of the spent voice credits per vote option
-    component newPerVOSpentVoiceCreditsRoot = QuinCheckRoot(voteOptionTreeDepth);
-
     for (var i = 0; i < numVoteOptions; i ++) {
         newResultsRoot.leaves[i] <== newResults[i];
-        newPerVOVotesRoot.leaves[i] <== newPerVOVotes[i];
-        newPerVOSpentVoiceCreditsRoot.leaves[i] <== newPerVOSpentVoiceCredits[i];
     }
 
-    component newResultsCommitment = HashLeftRight();
-    newResultsCommitment.left <== newResultsRoot.root;
-    newResultsCommitment.right <== newResultsRootSalt;
+    component newTallyCommitmentHasher = HashLeftRight();
+    newTallyCommitmentHasher.left <== newResultsRoot.root;
+    newTallyCommitmentHasher.right <== newResultsRootSalt;
 
-    component newPerVOVotesCommitment = HashLeftRight();
-    newPerVOVotesCommitment.left <== newPerVOVotesRoot.root;
-    newPerVOVotesCommitment.right <== newPerVOVotesRootSalt;
-
-    component newPerVOSpentVoiceCreditsCommitment = HashLeftRight();
-    newPerVOSpentVoiceCreditsCommitment.left <== newPerVOSpentVoiceCreditsRoot.root;
-    newPerVOSpentVoiceCreditsCommitment.right <== newPerVOSpentVoiceCreditsRootSalt;
-
-    // Commit to the new tally
-    component newTallyCommitmentHasher = Hasher3();
-    newTallyCommitmentHasher.in[0] <== newResultsCommitment.hash;
-    newTallyCommitmentHasher.in[1] <== newPerVOVotesCommitment.hash;
-    newTallyCommitmentHasher.in[2] <== newPerVOSpentVoiceCreditsCommitment.hash;
-
-    /*log(newResultsCommitment.hash);*/
-    /*log(newSpentVoiceCreditsCommitment.hash);*/
-    /*log(newPerVOSpentVoiceCreditsCommitment.hash);*/
     newTallyCommitmentHasher.hash === newTallyCommitment;
 }
 

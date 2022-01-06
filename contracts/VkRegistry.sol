@@ -81,6 +81,8 @@ contract VkRegistry is Ownable, SnarkCommon {
         processVk.beta2 = _processVk.beta2;
         processVk.gamma2 = _processVk.gamma2;
         processVk.delta2 = _processVk.delta2;
+        // * DEV *
+        delete processVk.ic;
         for (uint8 i = 0; i < _processVk.ic.length; i ++) {
             processVk.ic.push(_processVk.ic[i]);
         }
@@ -92,6 +94,8 @@ contract VkRegistry is Ownable, SnarkCommon {
         tallyVk.beta2 = _tallyVk.beta2;
         tallyVk.gamma2 = _tallyVk.gamma2;
         tallyVk.delta2 = _tallyVk.delta2;
+        // * DEV *
+        delete tallyVk.ic;
         for (uint8 i = 0; i < _tallyVk.ic.length; i ++) {
             tallyVk.ic.push(_tallyVk.ic[i]);
         }

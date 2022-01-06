@@ -7,6 +7,7 @@ import { VkRegistry } from "./VkRegistry.sol";
 import { Verifier } from "./crypto/Verifier.sol";
 import { SnarkCommon } from "./crypto/SnarkCommon.sol";
 import { QuinaryTreeBlankSl } from "./store/SimpleQuinaryTree.sol";
+import { QuinaryTreeRoot } from "./store/QuinaryTreeRoot.sol";
 // import { SnarkConstants } from "./crypto/SnarkConstants.sol"; // SnarkConstants -> Hasher -> DomainObjs
 
 
@@ -35,21 +36,30 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     // circuit's compile-time parameters, such as tree depths and batch sizes.
     VkRegistry public vkRegistry;
 
+    // Verify the results at the final counting stage.
+    QuinaryTreeRoot public qtrLib;
+
     Verifier public verifier;
 
     MaciParameters public parameters;
 
     Period public period;
-    uint256 public msgChainLength;
-    mapping (uint256 => uint256) public msgHashes;
-    uint256 private _processedMsgCount;
 
     uint256 public numSignUps;
     uint256 public maxVoteOptions;
+
+    uint256 public msgChainLength;
+    mapping (uint256 => uint256) public msgHashes;
     uint256 public currentStateCommitment;
+    uint256 private _processedMsgCount;
+
+    uint256 public currentTallyCommitment;
+    uint256 private _processedUserCount;
 
     QuinaryTreeBlankSl public stateTree;
     uint256 public maxStateIdx;
+
+    mapping (uint256 => uint256) public result;
 
     event SignUp(uint256 indexed _stateIdx, PubKey _userPubKey, uint256 _voiceCreditBalance);
     event PublishMessage(uint256 indexed _msgIdx, Message _message, PubKey _encPubKey);
@@ -62,6 +72,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     function init(
         address _admin,
         VkRegistry _vkRegistry,
+        QuinaryTreeRoot _qtrLib,
         Verifier _verifier,
         QuinaryTreeBlankSl _stateTree,
         MaciParameters memory _parameters,
@@ -69,6 +80,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     ) public atPeriod(Period.Pending) {
         admin = _admin;
         vkRegistry = _vkRegistry;
+        qtrLib = _qtrLib;
         verifier = _verifier;
         stateTree = _stateTree;
         parameters = _parameters;
@@ -156,8 +168,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         uint256 newStateCommitment,
         uint256[8] memory _proof
     ) public atPeriod(Period.Processing) {
-        // All messages have been processed.
-        require(_processedMsgCount < msgChainLength);
+        require(_processedMsgCount < msgChainLength, "all messages have been processed");
 
         uint256 batchSize = parameters.messageBatchSize;
 
@@ -195,5 +206,58 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     function stopProcessingPeriod() public atPeriod(Period.Processing) {
         require(_processedMsgCount == msgChainLength);
         period = Period.Tallying;
+
+        // unnecessary writes
+        // currentTallyCommitment = 0;
+    }
+
+    function processTally(
+        uint256 newTallyCommitment,
+        uint256[8] memory _proof
+    ) public atPeriod(Period.Tallying) {
+        require(_processedUserCount < numSignUps, "all users have been processed");
+    
+        uint256 batchSize = 5 ** parameters.intStateTreeDepth;
+        uint256 batchNum = _processedUserCount / batchSize;
+
+        uint256[] memory input = new uint256[](4);
+        input[0] = (numSignUps << uint256(32)) + batchNum;          // packedVals
+
+        // The state commitment will not change after
+        // the end of the processing period.
+        input[1] = currentStateCommitment;                          // stateCommitment
+        input[2] = currentTallyCommitment;                          // tallyCommitment
+        input[3] = newTallyCommitment;                              // newTallyCommitment
+
+        uint256 inputHash = uint256(sha256(abi.encodePacked(input))) % SNARK_SCALAR_FIELD;
+
+        VerifyingKey memory vk = vkRegistry.getTallyVk(
+            parameters.stateTreeDepth,
+            parameters.intStateTreeDepth,
+            parameters.voteOptionTreeDepth
+        );
+
+        bool isValid = verifier.verify(_proof, vk, inputHash);
+        require(isValid, "invalid proof");
+
+        // Proof success, update commitment and progress.
+        currentTallyCommitment = newTallyCommitment;
+        _processedUserCount += batchSize;
+    }
+
+    function stopTallyingPeriod(uint256[] memory _results, uint256 _salt) public atPeriod(Period.Tallying) {
+        require(_processedUserCount >= numSignUps);
+        require(_results.length <= maxVoteOptions);
+
+        uint256 resultsRoot = qtrLib.rootOf(parameters.voteOptionTreeDepth, _results);
+        uint256 tallyCommitment = hash2([resultsRoot, _salt]);
+        
+        require(tallyCommitment == currentTallyCommitment);
+
+        for (uint256 i = 0; i < _results.length; i++) {
+            result[i] = _results[i];
+        }
+
+        period = Period.Ended;
     }
 }

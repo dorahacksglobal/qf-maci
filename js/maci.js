@@ -338,12 +338,10 @@ class MACI {
 
     this.batchNum = 0
     // resultsRootSalt, perVOVotesRootSalt, perVOSpentVoiceCreditsRootSalt
-    this.tallySalts = [0n, 0n, 0n]
+    this.tallySalt = 0n
     this.tallyCommitment = 0n
 
     this.tallyResults = new Tree(5, this.voteOptionTreeDepth, 0n)
-    this.tallyVotes = new Tree(5, this.voteOptionTreeDepth, 0n)
-    this.tallySpentVCs = new Tree(5, this.voteOptionTreeDepth, 0n)
 
     console.log([
       'Process Finished '.padEnd(60, '='),
@@ -351,7 +349,7 @@ class MACI {
     ].join('\n'))
   }
 
-  processTally(tallySalts = [0n, 0n, 0n]) {
+  processTally(tallySalt = 0n) {
     if (this.states !== MACI_STATES.TALLYING) throw new Error('period error')
 
     const batchSize = 5 ** this.intStateTreeDepth
@@ -365,11 +363,11 @@ class MACI {
     // PROCESS ================================================================
 
     const currentResults = this.tallyResults.leaves()
-    const currentPerVOVotes = this.tallyVotes.leaves()
-    const currentPerVOSpentVoiceCredits = this.tallySpentVCs.leaves()
 
     const stateLeaf = new Array(batchSize)
     const votes = new Array(batchSize)
+
+    const MAX_VOTES = 10n ** 24n
 
     for (let i = 0; i < batchSize; i++) {
       const stateIdx = batchStartIdx + i
@@ -389,17 +387,11 @@ class MACI {
       for (let j = 0; j < this.voSize; j++) {
         const v = s.voTree.leaf(j)
 
-        this.tallyResults.updateLeaf(j, this.tallyResults.leaf(j) + this.tallyVotes.leaf(j) * v)
-        this.tallyVotes.updateLeaf(j, this.tallyVotes.leaf(j) + v)
-        this.tallySpentVCs.updateLeaf(j, this.tallySpentVCs.leaf(j) + v * v)
+        this.tallyResults.updateLeaf(j, this.tallyResults.leaf(j) + v * (v + MAX_VOTES))
       }
     }
 
-    const newTallyCommitment = poseidon([
-      poseidon([this.tallyResults.root, tallySalts[0]]),
-      poseidon([this.tallyVotes.root, tallySalts[1]]),
-      poseidon([this.tallySpentVCs.root, tallySalts[2]]),
-    ])
+    const newTallyCommitment = poseidon([this.tallyResults.root, tallySalt])
 
     // GEN INPUT JSON =========================================================
     const packedVals =
@@ -428,19 +420,19 @@ class MACI {
       statePathElements,
       votes,
       currentResults,
-      currentResultsRootSalt: this.tallySalts[0],
-      newResultsRootSalt: tallySalts[0],
-      currentPerVOVotes,
-      currentPerVOVotesRootSalt: this.tallySalts[1],
-      newPerVOVotesRootSalt: tallySalts[1],
-      currentPerVOSpentVoiceCredits,
-      currentPerVOSpentVoiceCreditsRootSalt: this.tallySalts[2],
-      newPerVOSpentVoiceCreditsRootSalt: tallySalts[2],
+      currentResultsRootSalt: this.tallySalt,
+      newResultsRootSalt: tallySalt,
+      // currentPerVOVotes,
+      // currentPerVOVotesRootSalt: this.tallySalts[1],
+      // newPerVOVotesRootSalt: tallySalts[1],
+      // currentPerVOSpentVoiceCredits,
+      // currentPerVOSpentVoiceCreditsRootSalt: this.tallySalts[2],
+      // newPerVOSpentVoiceCreditsRootSalt: tallySalts[2],
     }
 
     this.batchNum++
     this.tallyCommitment = newTallyCommitment
-    this.tallySalts = tallySalts
+    this.tallySalt = tallySalt
 
     console.log([
       '',

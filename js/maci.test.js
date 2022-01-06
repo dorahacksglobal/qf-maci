@@ -37,19 +37,19 @@ main.initStateTree(USER_2, user2.pubKey, 80)
 
 const enc1 = genKeypair(privateKeys[2])
 const message1 = genMessage(enc1.privKey, coordinator.pubKey)(
-  USER_1, 1, 12, 10, user1.pubKey, user1.privKey, 1234567890n
+  USER_1, 2, 12, 8, user1.pubKey, user1.privKey, 1234567890n
 )
 main.pushMessage(message1, enc1.pubKey)
 
 const enc3 = genKeypair(privateKeys[5])
 const message3 = genMessage(enc3.privKey, coordinator.pubKey)(
-  USER_2, 1, 4, 10, user2.pubKey, user2.privKey, 1234567890n
+  USER_2, 1, 8, 5, user2.pubKey, user2.privKey, 1234567890n
 )
 main.pushMessage(message3, enc3.pubKey)
 
 const enc2 = genKeypair(privateKeys[3])
 const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
-  USER_1, 1, 8, 10, user1.pubKey, user1.privKey, 9876543210n
+  USER_1, 1, 8, 6, user1.pubKey, user1.privKey, 9876543210n
 )
 main.pushMessage(message2, enc2.pubKey)
 
@@ -70,7 +70,7 @@ while (main.states === 1) {
 // TALLYING
 i = 0
 while (main.states === 2) {
-  const input = main.processTally([123n, 456n, 789n])
+  const input = main.processTally(1234567890n)
 
   fs.writeFileSync(
     path.join(outputPath, `tally-input_${i.toString().padStart(4, '0')}.json`),
