@@ -11,7 +11,7 @@ import { QuinaryTreeRoot } from "./store/QuinaryTreeRoot.sol";
 // import { SnarkConstants } from "./crypto/SnarkConstants.sol"; // SnarkConstants -> Hasher -> DomainObjs
 
 
-contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
+contract MACI is DomainObjs, SnarkCommon, Ownable {
     struct MaciParameters {
         uint256 stateTreeDepth;
         uint256 intStateTreeDepth;
@@ -48,6 +48,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     Period public period;
 
     mapping (address => uint256) public stateIdxInc;
+    mapping (uint256 => uint256) public voiceCreditBalance;
 
     uint256 public numSignUps;
     uint256 public maxVoteOptions;
@@ -136,6 +137,14 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         return hash2([hash5(m), hash5(n)]);
     }
 
+    function stateOf(address _signer) public view returns (uint256, uint256) {
+        uint256 ii = stateIdxInc[_signer];
+        require(ii >= 1);
+        uint256 stateIdx = ii - 1;
+        uint256 balance = voiceCreditBalance[stateIdx];
+        return (stateIdx, balance);
+    }
+
     function signUp(
         PubKey memory _pubKey,
         bytes memory _data
@@ -146,20 +155,21 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
             "MACI: _pubKey values should be less than the snark scalar field"
         );
 
-        (bool valid, uint256 voiceCreditBalance) = gateKeeper.register(msg.sender, _data);
+        (bool valid, uint256 balance) = gateKeeper.register(msg.sender, _data);
 
         require(valid, "401");
 
         uint256 stateLeaf = hashStateLeaf(
-            StateLeaf(_pubKey, voiceCreditBalance, 0, 0)
+            StateLeaf(_pubKey, balance, 0, 0)
         );
         uint256 stateIndex = numSignUps;
         _stateEnqueue(stateLeaf);
         numSignUps++;
 
         stateIdxInc[msg.sender] = numSignUps;
+        voiceCreditBalance[stateIndex] = balance;
 
-        emit SignUp(stateIndex, _pubKey, voiceCreditBalance);
+        emit SignUp(stateIndex, _pubKey, balance);
     }
 
     function publishMessage(
