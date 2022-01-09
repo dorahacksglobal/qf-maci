@@ -6,7 +6,7 @@ import { Ownable } from "./Ownable.sol";
 import { VkRegistry } from "./VkRegistry.sol";
 import { Verifier } from "./crypto/Verifier.sol";
 import { SnarkCommon } from "./crypto/SnarkCommon.sol";
-import { QuinaryTreeBlankSl } from "./store/SimpleQuinaryTree.sol";
+import { SignUpGatekeeper } from "./gatekeepers/SignUpGatekeeper.sol";
 import { QuinaryTreeRoot } from "./store/QuinaryTreeRoot.sol";
 // import { SnarkConstants } from "./crypto/SnarkConstants.sol"; // SnarkConstants -> Hasher -> DomainObjs
 
@@ -31,6 +31,8 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
 
     uint256 public coordinatorHash;
 
+    SignUpGatekeeper public gateKeeper;
+
     // The verifying key registry. There may be multiple verifying keys stored
     // on chain, and Poll contracts must select the correct VK based on the
     // circuit's compile-time parameters, such as tree depths and batch sizes.
@@ -45,6 +47,8 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
 
     Period public period;
 
+    mapping (address => uint256) public stateIdxInc;
+
     uint256 public numSignUps;
     uint256 public maxVoteOptions;
 
@@ -56,10 +60,18 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
     uint256 public currentTallyCommitment;
     uint256 private _processedUserCount;
 
-    QuinaryTreeBlankSl public stateTree;
-    uint256 public maxStateIdx;
-
     mapping (uint256 => uint256) public result;
+
+    uint256 private _maxLeavesCount;
+    uint256 private _leafIdx0;
+    uint256[8] private _zeros;
+    /*
+     *  length: (5 ** (depth + 1) - 1) / 4
+     *
+     *  hashes(leaves) at depth D: nodes[n]
+     *  n => [ (5**D-1)/4 , (5**(D+1)-1)/4 )
+     */
+    mapping (uint256 => uint256) private _nodes;
 
     event SignUp(uint256 indexed _stateIdx, PubKey _userPubKey, uint256 _voiceCreditBalance);
     event PublishMessage(uint256 indexed _msgIdx, Message _message, PubKey _encPubKey);
@@ -74,7 +86,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         VkRegistry _vkRegistry,
         QuinaryTreeRoot _qtrLib,
         Verifier _verifier,
-        QuinaryTreeBlankSl _stateTree,
+        SignUpGatekeeper _gateKeeper,
         MaciParameters memory _parameters,
         PubKey memory _coordinator
     ) public atPeriod(Period.Pending) {
@@ -82,11 +94,22 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         vkRegistry = _vkRegistry;
         qtrLib = _qtrLib;
         verifier = _verifier;
-        stateTree = _stateTree;
+        gateKeeper = _gateKeeper;
         parameters = _parameters;
         coordinatorHash = hash2([_coordinator.x,  _coordinator.y]);
 
-        _stateTree.init();
+        // _stateTree.init();
+        _maxLeavesCount = 5 ** _parameters.stateTreeDepth;
+        _leafIdx0 = (_maxLeavesCount - 1) / 4;
+        
+        _zeros[0] = uint256(14655542659562014735865511769057053982292279840403315552050801315682099828156);
+        _zeros[1] = uint256(19261153649140605024552417994922546473530072875902678653210025980873274131905);
+        _zeros[2] = uint256(21526503558325068664033192388586640128492121680588893182274749683522508994597);
+        _zeros[3] = uint256(20017764101928005973906869479218555869286328459998999367935018992260318153770);
+        _zeros[4] = uint256(16998355316577652097112514691750893516081130026395813155204269482715045879598);
+        _zeros[5] = uint256(2612442706402737973181840577010736087708621987282725873936541279764292204086);
+        _zeros[6] = uint256(17716535433480122581515618850811568065658392066947958324371350481921422579201);
+        _zeros[7] = uint256(17437916409890180001398333108882255895598851862997171508841759030332444017770);
 
         period = Period.Voting;
     }
@@ -115,21 +138,26 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
 
     function signUp(
         PubKey memory _pubKey,
-        uint256 _balance
+        bytes memory _data
     ) public atPeriod(Period.Voting) {
+        require(numSignUps < _maxLeavesCount, "full");
         require(
             _pubKey.x < SNARK_SCALAR_FIELD && _pubKey.y < SNARK_SCALAR_FIELD,
             "MACI: _pubKey values should be less than the snark scalar field"
         );
 
-        /** DEV **/
-        uint256 voiceCreditBalance = _balance;
+        (bool valid, uint256 voiceCreditBalance) = gateKeeper.register(msg.sender, _data);
+
+        require(valid, "401");
 
         uint256 stateLeaf = hashStateLeaf(
             StateLeaf(_pubKey, voiceCreditBalance, 0, 0)
         );
-        uint256 stateIndex = stateTree.enqueue(stateLeaf);
-        numSignUps = stateIndex + 1;
+        uint256 stateIndex = numSignUps;
+        _stateEnqueue(stateLeaf);
+        numSignUps++;
+
+        stateIdxInc[msg.sender] = numSignUps;
 
         emit SignUp(stateIndex, _pubKey, voiceCreditBalance);
     }
@@ -160,7 +188,7 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         maxVoteOptions = _maxVoteOptions;
         period = Period.Processing;
 
-        currentStateCommitment = hash2([stateTree.root() , 0]);
+        currentStateCommitment = hash2([_stateRoot() , 0]);
     }
 
     // Transfer state root according to message queue.
@@ -259,5 +287,41 @@ contract SimpleMACI is DomainObjs, SnarkCommon, Ownable {
         }
 
         period = Period.Ended;
+    }
+
+    function _stateRoot() private view returns (uint256) {
+        return _nodes[0];
+    }
+
+    function _stateEnqueue(uint256 _leaf) private {
+        uint256 leafIdx = _leafIdx0 + numSignUps;
+        _nodes[leafIdx] = _leaf;
+        _stateUpdateAt(leafIdx);
+    }
+
+    function _stateUpdateAt(uint256 _index) private {
+        require(_index >= _leafIdx0, "must update from height 0");
+
+        uint256 idx = _index;
+        uint256 height = 0;
+        while (idx > 0) {
+            uint256 parentIdx = (idx - 1) / 5;
+            uint256 childrenIdx0 = parentIdx * 5 + 1;
+
+            uint256 zero = _zeros[height];
+
+            uint256[5] memory inputs;
+            for (uint256 i = 0; i < 5; i++) {
+                uint256 child = _nodes[childrenIdx0 + i];
+                if (child == 0) {
+                    child = zero;
+                }
+                inputs[i] = child;
+            }
+            _nodes[parentIdx] = hash5(inputs);
+
+            height++;
+            idx = parentIdx;
+        }
     }
 }
