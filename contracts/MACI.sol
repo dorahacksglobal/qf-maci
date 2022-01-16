@@ -74,6 +74,8 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
      */
     mapping (uint256 => uint256) private _nodes;
 
+    uint256 public totalResult;
+
     event SignUp(uint256 indexed _stateIdx, PubKey _userPubKey, uint256 _voiceCreditBalance);
     event PublishMessage(uint256 indexed _msgIdx, Message _message, PubKey _encPubKey);
 
@@ -194,6 +196,16 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
         msgChainLength++;
     }
 
+    function batchPublishMessage(
+        Message[] memory _messages,
+        PubKey[] memory _encPubKeys
+    ) public {
+        require(_messages.length == _encPubKeys.length);
+        for (uint256 i = 0; i < _messages.length; i++) {
+            publishMessage(_messages[i], _encPubKeys[i]);
+        }
+    }
+
     function stopVotingPeriod(uint256 _maxVoteOptions) public onlyOwner atPeriod(Period.Voting) {
         maxVoteOptions = _maxVoteOptions;
         period = Period.Processing;
@@ -292,10 +304,18 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
         
         require(tallyCommitment == currentTallyCommitment);
 
+        uint256 sum = 0;
         for (uint256 i = 0; i < _results.length; i++) {
             result[i] = _results[i];
+            sum += _results[i];
         }
+        totalResult = sum;
 
+        period = Period.Ended;
+    }
+
+    function stopTallyingPeriodWithoutResults() public onlyOwner atPeriod(Period.Tallying) {
+        require(_processedUserCount >= numSignUps);
         period = Period.Ended;
     }
 

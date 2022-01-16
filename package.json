@@ -13,6 +13,7 @@
     "circom": "git://github.com/weijiekoh/circomlib.git#243d2ec4fc9855780632fc498d24415b5534019f",
     "circomlib": "^2.0.0",
     "ethers": "^5.5.2",
-    "ffjavascript": "^0.2.46"
+    "ffjavascript": "^0.2.46",
+    "web3": "^1.6.1"
   }
 }
