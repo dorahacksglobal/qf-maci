@@ -1,7 +1,7 @@
 {
-  "name": "zk-learning",
+  "name": "hackerlink-qf-maci",
   "version": "1.0.0",
-  "description": "learning",
+  "description": "hackerlink qf maci demo",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
