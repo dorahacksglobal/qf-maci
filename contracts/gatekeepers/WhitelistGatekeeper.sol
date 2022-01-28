@@ -5,12 +5,19 @@ import { Ownable } from "../Ownable.sol";
 import { SignUpGatekeeper } from './SignUpGatekeeper.sol';
 
 
-contract SignUpSimpleGatekeeper is SignUpGatekeeper, Ownable {
+contract WhitelistGatekeeper is SignUpGatekeeper, Ownable {
     address public maci;
 
+    mapping (address => bool) public whitelist;
     mapping (address => bool) public registered;
 
     constructor() Ownable() {}
+
+    function setWhiteList(address[] memory _users) public onlyOwner {
+        for (uint256 i = 0; i < _users.length; i++) {
+            whitelist[_users[i]] = true;
+        }
+    }
 
     /*
      * Adds an uninitialised MACI instance to allow for token singups
@@ -27,10 +34,11 @@ contract SignUpSimpleGatekeeper is SignUpGatekeeper, Ownable {
      * @param _user The user's Ethereum address.
      * @param _data The ABI-encoded tokenId as a uint256.
      */
-    function register(address _user, bytes memory) public override returns (bool, uint256) {
-        require(maci == msg.sender, "SignUpGatekeeper: only specified MACI instance can call this function");
-        require(!registered[_user], "SignUpGatekeeper: registered");
-        registered[_user] = true;
-        return (true, 1000);
+    function register(address user, bytes memory) public override returns (bool, uint256) {
+        require(maci == msg.sender, "WhitelistGatekeeper: only specified MACI instance can call this function");
+        require(whitelist[user], "WhitelistGatekeeper: not authorized");
+        require(!registered[user], "WhitelistGatekeeper: registered");
+        registered[user] = true;
+        return (true, 100);
     }
 }
