@@ -26,7 +26,7 @@ const user1 = genKeypair(privateKeys[1])
 const user2 = genKeypair(privateKeys[4])
 
 const main = new MACI(
-  4, 2, 2, 4,               // tree config
+  7, 3, 3, 125,               // tree config
   privateKeys[0],         // coordinator
   20,
   2
