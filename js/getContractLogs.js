@@ -4,10 +4,11 @@ const Web3 = require('web3')
 const { stringizing } = require('./keypair')
 
 // * DEV *
-const contract = '0x8BfD494eCF0eCE070cC10E79BBcaD1104FEb895C'
-const fromBlock = 15708873
-const endBlock = 15909729
-const provider = 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+// ETHDencer test
+const contract = '0x93cc3938ed0086986DD43743063FA917572EF310'
+const fromBlock = 24348990
+const endBlock = 24825216
+const provider = 'https://rpc-mumbai.matic.today'
 
 const sleep = async (ms) => {
   return new Promise((resolve) => {
