@@ -43,9 +43,9 @@ const SignUpSign = '0xc7563c66f89e2fb0839e2b64ed54fe4803ff9428777814772ccfe4c385
     states.push({ idx, balance, pubkey })
   }
 
-  for (let i = fromBlock; i < endBlock; i += 5000) {
+  for (let i = fromBlock; i < endBlock; i += 3500) {
     const from = i
-    const to = i + 4999
+    const to = i + 3499
     await web3.eth
       .getPastLogs({
         fromBlock: from,
@@ -73,7 +73,7 @@ const SignUpSign = '0xc7563c66f89e2fb0839e2b64ed54fe4803ff9428777814772ccfe4c385
   }
 
   fs.writeFileSync(
-    path.join(__dirname, 'Logs.json'),
+    path.join(__dirname, 'contract-logs.json'),
     JSON.stringify(
       stringizing({ messages, states }),
       undefined,
