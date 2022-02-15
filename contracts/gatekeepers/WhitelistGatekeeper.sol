@@ -8,14 +8,14 @@ import { SignUpGatekeeper } from './SignUpGatekeeper.sol';
 contract WhitelistGatekeeper is SignUpGatekeeper, Ownable {
     address public maci;
 
-    mapping (address => bool) public whitelist;
+    mapping (address => uint256) public whitelist;
     mapping (address => bool) public registered;
 
     constructor() Ownable() {}
 
-    function setWhiteList(address[] memory _users) public onlyOwner {
+    function setWhiteList(address[] memory _users, uint256[] memory _vc) public onlyOwner {
         for (uint256 i = 0; i < _users.length; i++) {
-            whitelist[_users[i]] = true;
+            whitelist[_users[i]] = _vc[i];
         }
     }
 
@@ -36,9 +36,9 @@ contract WhitelistGatekeeper is SignUpGatekeeper, Ownable {
      */
     function register(address user, bytes memory) public override returns (bool, uint256) {
         require(maci == msg.sender, "WhitelistGatekeeper: only specified MACI instance can call this function");
-        require(whitelist[user], "WhitelistGatekeeper: not authorized");
+        require(whitelist[user] > 0, "WhitelistGatekeeper: not authorized");
         require(!registered[user], "WhitelistGatekeeper: registered");
         registered[user] = true;
-        return (true, 100);
+        return (true, whitelist[user]);
     }
 }
