@@ -174,31 +174,6 @@ template TallyVotes(
     }
 }
 
-template CalculateArea(voteOptionSize) {
-    var n = voteOptionSize + 1;
-
-    signal input currentVotes;
-    signal input currentArea;
-    signal input v[voteOptionSize];
-
-    signal output votes;
-    signal output area;
-
-    signal sum[n];
-    sum[0] <== currentVotes;
-
-    signal a[n];
-    a[0] <== currentArea;
-
-    for (var i = 0; i < voteOptionSize; i ++) {
-        sum[i + 1] <== sum[i] + v[i];
-        a[i + 1] <== a[i] + sum[i] * v[i];
-    }
-
-    votes <== sum[voteOptionSize];
-    area <== a[voteOptionSize];
-}
-
 /*
  * Verifies the commitment to the current results. Also computes and outputs a
  * commitment to the new results.
