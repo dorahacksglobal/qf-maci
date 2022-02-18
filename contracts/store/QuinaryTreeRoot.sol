@@ -21,7 +21,6 @@ contract QuinaryTreeRoot is MerkleZeros {
         for (uint256 i = 0; i < _depth; i++) {
             uint256 zero = getZero(i);
             // number of non-zero parent nodes
-            pl = (length - 1) / DEGREE + 1;
             for (uint256 j = 0; j < c; j ++) {
                 if (j >= length) {
                     continue;
@@ -53,7 +52,11 @@ contract QuinaryTreeRoot is MerkleZeros {
             c = c / DEGREE;
         }
 
-        return _nodes[0];
+        uint256 result = _nodes[0];
+        if (result == 0) {
+            result = getZero(_depth);
+        }
+        return result;
     }
 
     function getZero(uint256 _height) internal view returns (uint256) {
