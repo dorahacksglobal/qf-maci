@@ -3,19 +3,20 @@ const path = require('path')
 const { stringizing } = require('./keypair')
 const MACI = require('./maci')
 
-const logsPath = process.argv[2]
-const outputPath = process.argv[3]
-if (!outputPath) {
-  console.log('no output directory is specified')
-  process.exit(1)
-}
+const logsPath = path.join(__dirname, '../build/contract-logs.json')
+const outputPath = path.join(__dirname, '../build/inputs')
+// if (!outputPath) {
+//   console.log('no output directory is specified')
+//   process.exit(1)
+// }
 
 // * DEV *
+const maxVoteOptions = 30
 const main = new MACI(
-  7, 3, 3, 125,               // tree config
+  6, 3, 3, 125,               // tree config
   10323336771310894148508984336434564969715880830427060157568539544440860700904n,                   // coordinator
   6,
-  30
+  maxVoteOptions
 )
 
 function toBigInt(list) {
@@ -65,7 +66,7 @@ while (main.states === 2) {
 
 fs.writeFileSync(
   path.join(outputPath, 'result.json'),
-  JSON.stringify(stringizing(main.tallyResults.leaves()), undefined, 2)
+  JSON.stringify(stringizing(main.tallyResults.leaves().slice(0, maxVoteOptions)), undefined, 2)
 )
 
 fs.writeFileSync(

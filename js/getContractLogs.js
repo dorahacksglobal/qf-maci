@@ -7,7 +7,7 @@ const { stringizing } = require('./keypair')
 // ETHDencer test
 const contract = '0x93cc3938ed0086986DD43743063FA917572EF310'
 const fromBlock = 24348990
-const endBlock = 24825216
+const endBlock = 25083660
 const provider = 'https://rpc-mumbai.matic.today'
 
 const sleep = async (ms) => {
@@ -73,7 +73,7 @@ const SignUpSign = '0xc7563c66f89e2fb0839e2b64ed54fe4803ff9428777814772ccfe4c385
   }
 
   fs.writeFileSync(
-    path.join(__dirname, 'contract-logs.json'),
+    path.join(__dirname, '../build/contract-logs.json'),
     JSON.stringify(
       stringizing({ messages, states }),
       undefined,
