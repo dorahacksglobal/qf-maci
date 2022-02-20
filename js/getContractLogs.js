@@ -5,10 +5,10 @@ const { stringizing } = require('./keypair')
 
 // * DEV *
 // ETHDencer test
-const contract = '0x93cc3938ed0086986DD43743063FA917572EF310'
-const fromBlock = 24348990
-const endBlock = 25083660
-const provider = 'https://rpc-mumbai.matic.today'
+const contract = '0x2C0E46b772D9b272ddD466BFfE3C17A4F61ce252'
+const fromBlock = 25149229
+const endBlock = 25168512
+const provider = 'https://polygon-rpc.com/'
 
 const sleep = async (ms) => {
   return new Promise((resolve) => {
