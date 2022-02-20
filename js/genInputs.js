@@ -1,22 +1,20 @@
 const fs = require('fs')
 const path = require('path')
-const { stringizing } = require('./keypair')
+const { stringizing, genRandomKey } = require('./keypair')
 const MACI = require('./maci')
+
+const coordinatorKey = BigInt(process.argv[2])
 
 const logsPath = path.join(__dirname, '../build/contract-logs.json')
 const outputPath = path.join(__dirname, '../build/inputs')
-// if (!outputPath) {
-//   console.log('no output directory is specified')
-//   process.exit(1)
-// }
 
 // * DEV *
 const maxVoteOptions = 30
 const main = new MACI(
-  6, 3, 3, 125,               // tree config
-  10323336771310894148508984336434564969715880830427060157568539544440860700904n,                   // coordinator
-  6,
-  maxVoteOptions
+  7, 3, 3, 125,               // tree config
+  coordinatorKey,
+  maxVoteOptions,
+  logs.states.length,
 )
 
 function toBigInt(list) {
@@ -41,7 +39,7 @@ const commitments = {}
 // PROCESSING
 let i = 0
 while (main.states === 1) {
-  const input = main.processMessage(1234567890n)
+  const input = main.processMessage(genRandomKey())
   commitments['msg_' + i.toString().padStart(4, '0')] = main.stateCommitment
 
   fs.writeFileSync(
@@ -54,7 +52,7 @@ while (main.states === 1) {
 // TALLYING
 i = 0
 while (main.states === 2) {
-  const input = main.processTally(1234567890n)
+  const input = main.processTally(genRandomKey())
   commitments['tally_' + i.toString().padStart(4, '0')] = main.tallyCommitment
 
   fs.writeFileSync(
