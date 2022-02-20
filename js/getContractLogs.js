@@ -7,7 +7,7 @@ const { stringizing } = require('./keypair')
 // ETHDencer test
 const contract = '0x2C0E46b772D9b272ddD466BFfE3C17A4F61ce252'
 const fromBlock = 25149229
-const endBlock = 25168512
+const endBlock = 25169769
 const provider = 'https://polygon-rpc.com/'
 
 const sleep = async (ms) => {

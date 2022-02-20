@@ -3,10 +3,18 @@ const path = require('path')
 const { stringizing, genRandomKey } = require('./keypair')
 const MACI = require('./maci')
 
+
+function toBigInt(list) {
+  return list.map(n => BigInt(n))
+}
+
 const coordinatorKey = BigInt(process.argv[2])
 
 const logsPath = path.join(__dirname, '../build/contract-logs.json')
 const outputPath = path.join(__dirname, '../build/inputs')
+
+const rawdata = fs.readFileSync(logsPath)
+const logs = JSON.parse(rawdata)
 
 // * DEV *
 const maxVoteOptions = 30
@@ -16,13 +24,6 @@ const main = new MACI(
   maxVoteOptions,
   logs.states.length,
 )
-
-function toBigInt(list) {
-  return list.map(n => BigInt(n))
-}
-
-const rawdata = fs.readFileSync(logsPath)
-const logs = JSON.parse(rawdata)
 
 for (const state of logs.states) {
   main.initStateTree(Number(state.idx), toBigInt(state.pubkey), state.balance)

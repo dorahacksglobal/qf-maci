@@ -3,7 +3,7 @@
 start=`date +%s`
 
 # need enter a random text
-snarkjs zkc build/zkey/msg_0.zkey build/zkey/msg_1.zkey
+snarkjs zkc build/zkey/msg_0.zkey build/zkey/msg_1.zkey --name="DoraHacks" -v
 
 end=`date +%s`
 
