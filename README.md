@@ -6,4 +6,6 @@ This repo is built based on MACI 1.0 from @PrivacyScaling.
 
 Repo details to be updated soon.
 
-Schelling point presentation can be found in this repo, file name: MACI ETHDenver.pdf (https://github.com/dorahacksglobal/qf-maci/blob/master/MACI%20ETHDenver.pdf).
+# Immunefi bug bounty for MACI
+
+https://immunefi.com/bounty/dorahacks
