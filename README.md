@@ -1,4 +1,4 @@
-# DoraHacks MACI
+# DoraHacks Light-Weight MACI
 
 DoraHacks MACI is a light-weight implementation of MACI. It is integrated with the DoraHacks platform to provide private, collusion-resistant voting infrastructure for hackathons, quadratic voting / quadratic funding rounds. However, we are trying to make it portable, so that it can be integrated by other protocols / products for anti-collusion / privacy-preserving purposes.
 
