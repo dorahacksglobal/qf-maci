@@ -117,6 +117,10 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
         period = Period.Voting;
     }
 
+    function setParameters(MaciParameters memory _parameters) public onlyOwner {
+        parameters = _parameters;
+    }
+
     function hashMessageAndEncPubKey(
         Message memory _message,
         PubKey memory _encPubKey,
