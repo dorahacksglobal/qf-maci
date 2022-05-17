@@ -409,13 +409,8 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
     //  ----------------------------------------------------------------------- 
     // 6. Generate a new state root
 
-    signal b;
-    signal c;
-    b <== currentVoteWeight * currentVoteWeight;
-    c <== cmdNewVoteWeight * cmdNewVoteWeight;
-
     signal newBalance;
-    newBalance <== stateLeaf[STATE_LEAF_VOICE_CREDIT_BALANCE_IDX] + b - c;
+    newBalance <== stateLeaf[STATE_LEAF_VOICE_CREDIT_BALANCE_IDX] + currentVoteWeight - cmdNewVoteWeight;
 
     // The new balance
     component voiceCreditBalanceMux = Mux1();

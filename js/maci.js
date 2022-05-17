@@ -202,7 +202,7 @@ class MACI {
       return 'signature error'
     }
     const currVotes = s.voTree.leaf(voIdx)
-    if (s.balance + currVotes * currVotes < cmd.newVotes * cmd.newVotes) {
+    if (s.balance + currVotes < cmd.newVotes) {
       return 'insufficient balance'
     }
   }
@@ -257,7 +257,7 @@ class MACI {
       if (!error) {
         // UPDATE STATE =======================================================
         s.pubKey = [...cmd.newPubKey]
-        s.balance = s.balance + currVotes * currVotes - cmd.newVotes * cmd.newVotes
+        s.balance = s.balance + currVotes - cmd.newVotes
         s.voTree.updateLeaf(voIdx, cmd.newVotes)
         s.nonce = cmd.nonce
         s.voted = true

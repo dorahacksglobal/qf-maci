@@ -60,10 +60,10 @@ template MessageValidator() {
     validVoteWeight.in[0] <== voteWeight;
     validVoteWeight.in[1] <== 147946756881789319005730692170996259609;
 
-    // Check that currentVoiceCreditBalance + (currentVotesForOption ** 2) >= (voteWeight ** 2)
+    // Check that currentVoiceCreditBalance + currentVotesForOption >= voteWeight
     component sufficientVoiceCredits = GreaterEqThan(252);
-    sufficientVoiceCredits.in[0] <== (currentVotesForOption * currentVotesForOption) + currentVoiceCreditBalance;
-    sufficientVoiceCredits.in[1] <== voteWeight * voteWeight;
+    sufficientVoiceCredits.in[0] <== currentVotesForOption + currentVoiceCreditBalance;
+    sufficientVoiceCredits.in[1] <== voteWeight;
 
     component validUpdate = IsEqual();
     validUpdate.in[0] <== 6;
