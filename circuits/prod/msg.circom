@@ -10,4 +10,4 @@ component main {
   public [
     inputHash
   ]
-} = ProcessMessages(6, 3, 125);
+} = ProcessMessages(3, 2, 50);
