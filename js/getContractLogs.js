@@ -5,10 +5,12 @@ const { stringizing } = require('./keypair')
 
 // * DEV *
 // ETHDencer test
-const contract = '0x2C0E46b772D9b272ddD466BFfE3C17A4F61ce252'
-const fromBlock = 25149229
-const endBlock = 25169769
-const provider = 'https://polygon-rpc.com/'
+const contract = '0xce1aec3d68d678131ffd124cb22dd5269e1d6f01'
+// const fromBlock = 22768923
+// const endBlock = 22984582
+const fromBlock = 23019941
+const endBlock = 23024130
+const provider = 'https://bscrpc.com'
 
 const sleep = async (ms) => {
   return new Promise((resolve) => {
@@ -43,9 +45,12 @@ const SignUpSign = '0xc7563c66f89e2fb0839e2b64ed54fe4803ff9428777814772ccfe4c385
     states.push({ idx, balance, pubkey })
   }
 
-  for (let i = fromBlock; i < endBlock; i += 3500) {
+  const number = await web3.eth.getBlockNumber()
+  console.log(number)
+
+  for (let i = fromBlock; i < endBlock; i += 2000) {
     const from = i
-    const to = i + 3499
+    const to = i + 1999
     await web3.eth
       .getPastLogs({
         fromBlock: from,
@@ -69,7 +74,7 @@ const SignUpSign = '0xc7563c66f89e2fb0839e2b64ed54fe4803ff9428777814772ccfe4c385
         console.error(err.message || err)
       })
     console.log(`Processed: from height ${from}, to height ${to}.`)
-    await sleep(100)
+    await sleep(1000)
   }
 
   fs.writeFileSync(

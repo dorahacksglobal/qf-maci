@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const MATCHING_POOL = 1000000
+const MATCHING_POOL = 10000
 const MAX_VOTES = 10n ** 24n
 
 const rawdata = fs.readFileSync(path.join(__dirname, '../build/inputs/result.json'))
@@ -24,10 +24,10 @@ for (let i = 0; i < result.length; i++) {
 }
 
 for (const item of output) {
-  item.matching = Math.round(MATCHING_POOL * Number(item.area) / Number(totalArea))
+  item.matching = (MATCHING_POOL * Number(item.area) / Number(totalArea)).toFixed(2)
 }
 
-let scv = 'buidl_id, maci_id, votes, matcing\n'
-scv += output.map((item) => [0, item.maciId, item.v, item.matching].join(', ')).join('\n')
+let csv = 'buidl_id, maci_id, votes, matcing\n'
+csv += output.map((item) => [0, item.maciId + 1, item.v, item.matching].join(', ')).join('\n')
 
-fs.writeFileSync(path.join(__dirname, '../build/inputs/result.scv'), scv)
+fs.writeFileSync(path.join(__dirname, '../build/inputs/result.csv'), csv)

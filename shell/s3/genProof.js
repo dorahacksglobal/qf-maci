@@ -41,7 +41,7 @@ async function run(type, id) {
   console.time('Time used')
 
   const idx = id.toString().padStart(4, '0')
-  await exec(`proof.sh ${type} ${idx}`, { cwd: __dirname })
+  await exec(`./proof.sh ${type} ${idx}`, { cwd: __dirname })
 
   const proof = getProof(type, idx)
   const commitment = commitments[`${type}_${idx}`]
