@@ -45,6 +45,26 @@ class Tree {
     this.nodes = nodes
   }
 
+  initLeaves(leaves) {
+    for (let i = 0; i < leaves.length; i++) {
+      if (i >= this.LEAVES_COUNT) {
+        console.error('OVERFLOW')
+        break
+      }
+      this.nodes[this.LEAVES_IDX_0 + i] = BigInt(leaves[i])
+    }
+
+    for (let d = this.DEPTH - 1; d >= 0; d--) {
+      const size = DEGREE ** d
+      const idx0 = (DEGREE ** d - 1) / (DEGREE - 1)
+      for (let i = 0; i < size / DEGREE; i++) {
+        const start = (idx0 + i) * DEGREE + 1
+        const children = nodes.slice(start, start + DEGREE)
+        nodes[idx0 + i] = poseidon(children)
+      }
+    }
+  }
+
   leaf(leafIdx) {
     if (leafIdx > this.LEAVES_COUNT || leafIdx < 0) {
       throw new Error('wrong leaf index')
@@ -111,6 +131,29 @@ class Tree {
     }
 
     return pathElement
+  }
+
+  subTree(length) {
+    const subTree = new Tree(this.DEGREE, this.DEPTH, this.zeros[0])
+    const nodes = [...this.nodes]
+
+    
+    const DEGREE = this.DEGREE
+    let tail = length
+    for (let d = this.DEPTH; d >= 0; d--) {
+      const size = DEGREE ** d
+      const idx0 = (DEGREE ** d - 1) / (DEGREE - 1)
+      const zero = this.zeros[this.DEPTH - d]
+      for (let i = tail; i < size; i++) {
+        nodes[idx0 + i] = zero
+      }
+      tail = Math.ceil(tail / DEGREE)
+    }
+
+    subTree.nodes = nodes
+    subTree._update(this.LEAVES_IDX_0 + length - 1)
+
+    return subTree
   }
 
   _update(nodeIdx) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.6;
-import { Hasher } from "./crypto/Hasher.sol";
+import {Hasher} from "./crypto/Hasher.sol";
 
 contract IPubKey {
     struct PubKey {
@@ -25,7 +25,9 @@ contract DomainObjs is IMessage, Hasher, IPubKey {
         uint256 nonce;
     }
 
-    function hashStateLeaf(StateLeaf memory _stateLeaf) public pure returns (uint256) {
+    function hashStateLeaf(
+        StateLeaf memory _stateLeaf
+    ) public pure returns (uint256) {
         uint256[5] memory plaintext;
         plaintext[0] = _stateLeaf.pubKey.x;
         plaintext[1] = _stateLeaf.pubKey.y;

@@ -34,6 +34,8 @@ template StateLeafTransformer() {
     // Note: we assume that packedCommand is valid!
     signal input packedCommand[PACKED_CMD_LENGTH];
 
+    signal input deactivate;
+
     // New state leaf (if the command is valid)
     signal output newSlPubKey[2];
 
@@ -64,23 +66,31 @@ template StateLeafTransformer() {
     messageValidator.currentVotesForOption <== currentVotesForOption;
     messageValidator.voteWeight <== cmdNewVoteWeight;
 
+    component activate = IsZero();
+    activate.in <== deactivate;
+
+    component valid = IsEqual();
+    valid.in[0] <== 2;
+    valid.in[1] <== activate.out + 
+                    messageValidator.isValid;
+
     component newSlPubKey0Mux = Mux1();
-    newSlPubKey0Mux.s <== messageValidator.isValid;
+    newSlPubKey0Mux.s <== valid.out;
     newSlPubKey0Mux.c[0] <== slPubKey[0];
     newSlPubKey0Mux.c[1] <== cmdNewPubKey[0];
     newSlPubKey[0] <== newSlPubKey0Mux.out;
 
     component newSlPubKey1Mux = Mux1();
-    newSlPubKey1Mux.s <== messageValidator.isValid;
+    newSlPubKey1Mux.s <== valid.out;
     newSlPubKey1Mux.c[0] <== slPubKey[1];
     newSlPubKey1Mux.c[1] <== cmdNewPubKey[1];
     newSlPubKey[1] <== newSlPubKey1Mux.out;
 
     component newSlNonceMux = Mux1();
-    newSlNonceMux.s <== messageValidator.isValid;
+    newSlNonceMux.s <== valid.out;
     newSlNonceMux.c[0] <== slNonce;
     newSlNonceMux.c[1] <== cmdNonce;
     newSlNonce <== newSlNonceMux.out;
 
-    isValid <== messageValidator.isValid;
+    isValid <== valid.out;
 }

@@ -93,6 +93,10 @@ template ProcessMessages(
     signal input newStateCommitment;
     signal input newStateSalt;
 
+    signal input deactivateCommitment;
+    signal input deactivateLeaves[batchSize];
+    signal input deactivateLeavesPathElements[batchSize][stateTreeDepth][TREE_ARITY - 1];
+
     signal input currentVoteWeights[batchSize];
     signal input currentVoteWeightsPathElements[batchSize][voteOptionTreeDepth][TREE_ARITY - 1];
 
@@ -218,6 +222,9 @@ template ProcessMessages(
 
         processors[i].voTreeZeroRoot <== voTreeZeroRoot;
 
+        processors[i].deactivateRoot <== deactivateRoot;
+        processors[i].deactivateLeaf <== deactivateLeaves[i];
+
         for (var j = 0; j < STATE_LEAF_LENGTH; j ++) {
             processors[i].stateLeaf[j] <== currentStateLeaves[i][j];
         }
@@ -226,6 +233,8 @@ template ProcessMessages(
             for (var k = 0; k < TREE_ARITY - 1; k ++) {
                 processors[i].stateLeafPathElements[j][k] 
                     <== currentStateLeavesPathElements[i][j][k];
+                processors[i].deactivateLeafPathElements[j][k] 
+                    <== deactivateLeavesPathElements[i][j][k];
             }
         }
 
@@ -295,6 +304,10 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
     signal input stateLeaf[STATE_LEAF_LENGTH];
     signal input stateLeafPathElements[stateTreeDepth][TREE_ARITY - 1];
 
+    signal input deactivateRoot;
+    signal input deactivateLeaf;
+    signal input deactivateLeafPathElements[stateTreeDepth][TREE_ARITY - 1];
+
     signal input currentVoteWeight;
     signal input currentVoteWeightsPathElements[voteOptionTreeDepth][TREE_ARITY - 1];
 
@@ -333,6 +346,7 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
     for (var i = 0; i < PACKED_CMD_LENGTH; i ++) {
         transformer.packedCommand[i]           <== packedCmd[i];
     }
+    transformer.deactivate                     <== deactivateLeaf;
 
     //  ----------------------------------------------------------------------- 
     // 2. If isValid is 0, generate indices for leaf 0
@@ -360,6 +374,18 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
         }
     }
     stateLeafQip.root === currentStateRoot;
+
+    //  ----------------------------------------------------------------------- 
+    // 3.1. Verify that the deactivate leaf exists in the given state root
+    component deactivateLeafQip = QuinTreeInclusionProof(stateTreeDepth);
+    deactivateLeafQip.leaf <== deactivateLeaf;
+    for (var i = 0; i < stateTreeDepth; i ++) {
+        deactivateLeafQip.path_index[i] <== stateLeafPathIndices.out[i];
+        for (var j = 0; j < TREE_ARITY - 1; j++) {
+            deactivateLeafQip.path_elements[i][j] <== deactivateLeafPathElements[i][j];
+        }
+    }
+    deactivateLeafQip.root === deactivateRoot;
 
     //  ----------------------------------------------------------------------- 
     // 5. Verify that currentVoteWeight exists in the ballot's vote option root
@@ -485,14 +511,15 @@ template ProcessMessagesInputHasher() {
     pubKeyHasher.left <== coordPubKey[0];
     pubKeyHasher.right <== coordPubKey[1];
 
-    // 3. Hash the 6 inputs with SHA256
-    component hasher = Sha256Hasher6();
+    // 3. Hash the 7 inputs with SHA256
+    component hasher = Sha256Hasher(7);
     hasher.in[0] <== packedVals;
     hasher.in[1] <== pubKeyHasher.hash;
     hasher.in[2] <== batchStartHash;
     hasher.in[3] <== batchEndHash;
     hasher.in[4] <== currentStateCommitment;
     hasher.in[5] <== newStateCommitment;
+    hasher.in[6] <== deactivateCommitment;
 
     hash <== hasher.hash;
 }
