@@ -5,11 +5,9 @@ const { stringizing } = require('./keypair')
 
 // * DEV *
 // ETHDencer test
-const contract = '0x12a07Df13dcB62efB5010aC50ec032fd7E0Fd8ce'
-// const fromBlock = 22768923
-// const endBlock = 22984582
-const fromBlock = 25479182
-const endBlock = 25689700
+const contract = '0xa42d37Dc91f32d501084c1948659319D977739e0'
+const fromBlock = 34402419
+const endBlock = 34709132
 const provider = 'https://bscrpc.com'
 
 const sleep = async (ms) => {
