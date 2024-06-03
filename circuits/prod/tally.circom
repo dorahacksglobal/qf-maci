@@ -10,4 +10,4 @@ component main {
   public [
     inputHash
   ]
-} = TallyVotes(6, 3, 3);
+} = TallyVotes(9, 4, 3);

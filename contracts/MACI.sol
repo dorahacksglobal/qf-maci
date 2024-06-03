@@ -113,6 +113,8 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
         _zeros[5] = uint256(2612442706402737973181840577010736087708621987282725873936541279764292204086);
         _zeros[6] = uint256(17716535433480122581515618850811568065658392066947958324371350481921422579201);
         _zeros[7] = uint256(17437916409890180001398333108882255895598851862997171508841759030332444017770);
+        _zeros[8] = uint256(20806704410832383274034364623685369279680495689837539882650535326035351322472);
+        _zeros[9] = uint256(6821382292698461711184253213986441870942786410912797736722948342942530789476);
 
         period = Period.Voting;
     }
@@ -213,6 +215,8 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
     function stopVotingPeriod(uint256 _maxVoteOptions) public onlyOwner atPeriod(Period.Voting) {
         maxVoteOptions = _maxVoteOptions;
         period = Period.Processing;
+
+        _stateUpdateAt(_leafIdx0 + numSignUps - 1, true);
 
         currentStateCommitment = hash2([_stateRoot() , 0]);
     }
@@ -330,15 +334,15 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
     function _stateEnqueue(uint256 _leaf) private {
         uint256 leafIdx = _leafIdx0 + numSignUps;
         _nodes[leafIdx] = _leaf;
-        _stateUpdateAt(leafIdx);
+        _stateUpdateAt(leafIdx, false);
     }
 
-    function _stateUpdateAt(uint256 _index) private {
+    function _stateUpdateAt(uint256 _index, bool _full) private {
         require(_index >= _leafIdx0, "must update from height 0");
 
         uint256 idx = _index;
         uint256 height = 0;
-        while (idx > 0) {
+        while (idx > 0 && (_full || idx % 5 == 0)) {
             uint256 parentIdx = (idx - 1) / 5;
             uint256 childrenIdx0 = parentIdx * 5 + 1;
 

@@ -146,6 +146,8 @@ const input2 = [
 // const tree = new Tree(5, finalPerVOSpentVoice, 2)
 const tree = new Tree(5, input2, 1)
 
-console.log(tree.nodes[0])
-
-console.log(poseidon([23497257039248226627100051681980129488805559380200297564116493861623124041n, 0n]))
+let z = 0n;
+for (let i = 0; i < 12; i++) {
+  z = poseidon([z, z, z, z, z]);
+  console.log(z);
+}

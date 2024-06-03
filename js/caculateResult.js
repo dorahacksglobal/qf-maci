@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const MATCHING_POOL = 10000
+const MATCHING_POOL = 50000
 const MAX_VOTES = 10n ** 24n
 
 const rawdata = fs.readFileSync(path.join(__dirname, '../build/inputs/result.json'))

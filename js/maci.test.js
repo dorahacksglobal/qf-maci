@@ -26,7 +26,7 @@ const user1 = genKeypair(privateKeys[1])
 const user2 = genKeypair(privateKeys[4])
 
 const main = new MACI(
-  7, 3, 3, 125,               // tree config
+  9, 4, 3, 625,               // tree config
   privateKeys[0],         // coordinator
   20,
   2
@@ -62,7 +62,7 @@ while (main.states === 1) {
 
   fs.writeFileSync(
     path.join(outputPath, `msg-input_${i.toString().padStart(4, '0')}.json`),
-    JSON.stringify(stringizing(input), undefined, 2)
+    JSON.stringify(stringizing(input))
   )
   i++
 }
@@ -74,12 +74,12 @@ while (main.states === 2) {
 
   fs.writeFileSync(
     path.join(outputPath, `tally-input_${i.toString().padStart(4, '0')}.json`),
-    JSON.stringify(stringizing(input), undefined, 2)
+    JSON.stringify(stringizing(input))
   )
   i++
 }
 
 fs.writeFileSync(
   path.join(outputPath, 'logs.json'),
-  JSON.stringify(main.logs, undefined, 2)
+  JSON.stringify(main.logs)
 )

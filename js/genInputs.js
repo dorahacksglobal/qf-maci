@@ -17,9 +17,9 @@ const rawdata = fs.readFileSync(logsPath)
 const logs = JSON.parse(rawdata)
 
 // * DEV *
-const maxVoteOptions = 3
+const maxVoteOptions = 100
 const main = new MACI(
-  6, 2, 3, 25,               // tree config
+  9, 4, 3, 625,               // tree config
   coordinatorKey,
   maxVoteOptions,
   logs.states.length,
